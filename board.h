@@ -7,7 +7,7 @@
 using namespace std;
 
 // Useful Enums
-enum PieceStyle{ I, O, T, S, Z, J, L };
+enum PieceStyle{ I, O, T, S, Z, J, L, NONE };
 enum Orientation{ up, down, left, right};
 enum State{ empty, still, moving };
 
@@ -29,7 +29,7 @@ struct Error{
 struct Tetromino{
 	int row;
 	int col;
-	PieceStyle kind;
+	PieceStyle kind = NONE;
 	Orientation orientation;
 };
 
@@ -95,9 +95,9 @@ struct Color{
 				b = 0;				
 				break;
 			case J:
-				// Purple
+				// Blue
 				r = 0;
-				g = 0;
+				g = 121;
 				b = 255;			
 				break;
 			case L:
@@ -106,6 +106,8 @@ struct Color{
 				g = 127;
 				b = 0;	
 				break;
+			default:
+				break;
 		
 		}
 	}
@@ -113,7 +115,7 @@ struct Color{
 
 // Some GFX functions
 void makeBorder(int TopLeftX, int TopLeftY, int width, int height, int boxWidth);
-void makeSquare(int x, int y, int x2, int y2, int boxWidth,  Color fillColor = Color());
+void makeSquare(int x, int y, int width, int height, Color fillColor = Color());
 void miniTetromino(int x, int y, int boxWidth, PieceStyle piece);
 		
 // Main Class
@@ -136,14 +138,24 @@ class Board{
 		Error rotate(bool clockwise=true);
 		Error move(bool right = true);
 		void hardDrop();
+		void hold();
 		
 		void terminalDisplay(bool clear = true);
 		void display();
 		
+		int getLinesCleared();
+		int getLevel();
+		
 	private:
 		vector< vector<State> > playfield;
 		vector< vector<Color> > fieldColors;
-		vector<PieceStyle> upcoming;
-		Tetromino hold;
+		
+		vector<PieceStyle> upcoming = {};
+		
+		Tetromino holdPiece = Tetromino();
 		Tetromino current;
+		
+		bool isHeld = false;
+		int linesCleared = 0;
+		int level = 1;
 };

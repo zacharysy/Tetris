@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cmath>
 #include <unistd.h>
 #include <cstdlib>
 
@@ -14,6 +15,7 @@ using namespace std;
 
 void test();
 void openGraphics();
+void controls(Board& board, char action, bool& loop);
 
 int main(int argc, char *argv[]){	
 	//test();
@@ -49,18 +51,22 @@ void test(){
 
 void openGraphics(){
 	int action;
-	const int width = 700, height = 700;
+	const int width = 400, height = 500;
 	bool loop = true;
 	
+	float level;
+	int time;
+	
+	gfx_open(width,height, "Tetris!");
+	
+			
 	Board board = Board();
 	board.dispense();
-
-	gfx_open(width,height, "Tetris!");
 
 	while (loop) {	
 		Error err = board.descend();
 		
-		if(!err.success){	
+		if(!err.success){
 			board.makeStill();
 		}
 		
@@ -70,36 +76,45 @@ void openGraphics(){
 		gfx_clear();
 		board.display();
 		gfx_flush();
-		//board.terminalDisplay();
-		usleep(100000);
+		
+		level = board.getLevel();
+		time =  200000*pow(0.8,level);
+		
+		usleep(time);
 			
 		if(gfx_event_waiting()){
 			action = gfx_wait();
-
-			switch (action) {
-				case Controls::l:
-					board.move(false);
-					break;
-				case Controls::r:
-					board.move();
-					break;
-				case Controls::clockwise:
-					board.rotate();
-					break;
-				case Controls::softdrop:
-					board.descend();
-					break;
-				case Controls::harddrop:
-					board.hardDrop();
-					break;
-				case 'q':
-					loop = false;
-				default:
-					break;
-			}		
+			controls(board, action, loop);
 		
 		}
 
   	}
+}
+
+void controls(Board& board, char action, bool& loop){
+	switch (action) {
+		case Controls::l:
+			board.move(false);
+			break;
+		case Controls::r:
+			board.move();
+			break;
+		case Controls::clockwise:
+			board.rotate();
+			break;
+		case Controls::softdrop:
+			board.descend();
+			break;
+		case Controls::harddrop:
+			board.hardDrop();
+			break;
+		case Controls::hold:
+			board.hold();
+			break;
+		case 'q':
+			loop = false;
+		default:
+			break;
+	}
 
 }

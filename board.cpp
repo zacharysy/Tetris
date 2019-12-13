@@ -5,6 +5,7 @@
 #include <string>
 #include <algorithm>
 #include <random>
+#include <sstream>
 #include <unistd.h>
 #include <cstdlib>
 
@@ -17,6 +18,8 @@ const int height = 40;
 const int width = 11;
 
 const int visibleHeight = 21;
+
+const int upcomingSize = 4;
 
 Board::Board(){
 	// Initialize Playfield
@@ -34,11 +37,12 @@ void Board::RandomGenerator(){
  
 	shuffle(pieces.begin(), pieces.end(), g);
 	
+	pieces.insert(pieces.end(), upcoming.begin(), upcoming.end());
 	upcoming = pieces;
 }
 
 void Board::dispense(){
-	if(upcoming.size() == 0) RandomGenerator();
+	if(upcoming.size() == upcomingSize+1) RandomGenerator();
 	
 	Tetromino piece;
 	
@@ -49,6 +53,11 @@ void Board::dispense(){
 	upcoming.pop_back();
 	
 	placeTetromino(piece);
+	
+	// Reset Hold
+	if(isHeld){
+		isHeld = false;
+	}
 }
 
 void Board::placeTetromino(Tetromino& piece){
@@ -104,6 +113,8 @@ void Board::placeTetromino(Tetromino& piece){
 			playfield[current.row+1][current.col] = moving;
 			playfield[current.row+1][current.col+1] = moving;
 			break;
+		default:
+			break;
 	}
 }
 
@@ -119,11 +130,11 @@ Error Board::descend(){
 	
 	// Descend
 	// Check if anything is in the way
-	for(int row = topRow+3; row >= topRow-1; row--){
+	for(int row = topRow+4; row >= topRow-4; row--){
 		if(row >= height) continue;
 		
-		for(int col = topCol+3; col >= topCol-1; col--){
-			if(col <= 0) continue;
+		for(int col = topCol+4; col >= topCol-4; col--){
+			if(col <= 0 || col >= width) continue;
 
 			if(playfield[row][col] == moving){
 				if(row == height-1){
@@ -140,11 +151,11 @@ Error Board::descend(){
 	}
 
 	// Nothing is in the way so replace blocks
-	for(int row = topRow+3; row >= topRow-1; row--){
+	for(int row = topRow+4; row >= topRow-4; row--){
 		if(row >= height) continue;
 		
-		for(int col = topCol+3; col >= topCol-1; col--){
-			if(col <= 0) continue;
+		for(int col = topCol+4; col >= topCol-4; col--){
+			if(col <= 0 || col >= width) continue;
 
 			if(playfield[row][col] == moving){
 				playfield[row][col] = empty;
@@ -171,9 +182,9 @@ void Board::makeStill(){
 	if(topCol < 0) topCol = 0;
 	
 	// Descend
-	for(int row = topRow+3; row >= topRow-1; row--){
-		for(int col = topCol+3; col >= topCol-1; col--){
-			if(col <= 0) continue;
+	for(int row = topRow+4; row >= topRow-4; row--){
+		for(int col = topCol+4; col >= topCol-4; col--){
+			if(col <= 0 || col >= width) continue;
 			if(row >= height) continue;
 
 			if(playfield[row][col] == moving){				
@@ -191,10 +202,17 @@ void Board::makeStill(){
 }
 
 void Board::death(){
-	for(int row = 0; row < visibleHeight; row++){
+	for(int row = 0; row < visibleHeight-1; row++){
 		for(State square:playfield[row]){
 			if(square == still){
 				// Endgame
+				gfx_text(20, 20, "LOST! PRESS ANY KEY TO EXIT");
+				bool a = true;
+				
+				while(a){
+					if(gfx_event_waiting()) a = !a;
+				}
+				
 				exit(0);
 			} 
 		}
@@ -210,6 +228,8 @@ void Board::lineCleared(){
 		}
 		
 		// Line Filled
+		linesCleared += 1;
+		
 		//	Delete line
 		for(int col = 1; col < width; col++){
 			playfield[row][col] = empty;
@@ -233,6 +253,17 @@ void Board::lineCleared(){
 		
 		notCleared:;
 	}
+	
+	// Level Up every 5 lines
+	level = linesCleared/5 + 1;
+}
+
+int Board::getLinesCleared(){
+	return linesCleared;
+}
+
+int Board::getLevel(){
+	return level;
 }
 
 // There is probably a better way to do this but this is due on sunday
@@ -811,6 +842,8 @@ Error Board::rotate(bool clockwise){
 					break;
 			}
 			break;
+		default:
+			break;
 	}
 		
 	}else{
@@ -833,11 +866,11 @@ Error Board::move(bool right){
 
 		
 		// Check if valid
-		for(int row = topRow+3; row >= topRow; row--){
+		for(int row = topRow+4; row >= topRow-4; row--){
 			if(row >= height) continue;
 			
-			for(int col = topCol+3; col >= topCol; col--){
-				if(col <= 0) continue;
+			for(int col = topCol+4; col >= topCol-4; col--){
+				if(col <= 0 || col >= width) continue;
 					
 				if(playfield[row][col] == moving && col+1 >= width){
 					err.error(hittingWall);
@@ -855,9 +888,9 @@ Error Board::move(bool right){
 		// Is valid
 		current.col = current.col + 1;
 		
-		for(int row = topRow+3; row >= topRow; row--){
-			for(int col = topCol+3; col >= topCol; col--){
-				if(col <= 0) continue;
+		for(int row = topRow+4; row >= topRow-4; row--){
+			for(int col = topCol+4; col >= topCol-4; col--){
+				if(col <= 0 || col >= width) continue;
 					
 				if(playfield[row][col] == moving){
 					playfield[row][col] = empty;
@@ -876,11 +909,11 @@ Error Board::move(bool right){
 		
 	}else{
 		// Check is valid
-		for(int row = topRow; row < topRow+4; row++){
+		for(int row = topRow-4; row < topRow+4; row++){
 			if(row >= height) continue;
 			
-			for(int col = topCol; col < topCol+4; col++){
-				if(col >= width) continue;
+			for(int col = topCol-4; col < topCol+4; col++){
+				if(col >= width || col <= 0) continue;
 				
 				if(playfield[row][col] == moving && col-1 <= 0){
 					err.error(hittingWall);
@@ -898,11 +931,11 @@ Error Board::move(bool right){
 		// is Valid
 		current.col = current.col - 1;
 		
-		for(int row = topRow; row < topRow+4; row++){
+		for(int row = topRow-4; row < topRow+4; row++){
 			if(row >= height) continue;
 			
-			for(int col = topCol; col < topCol+4; col++){
-				if(col >= width) continue;
+			for(int col = topCol-4; col < topCol+4; col++){
+				if(col >= width || col <= 0) continue;
 			
 				if(playfield[row][col] == moving){
 					playfield[row][col] = empty;
@@ -932,6 +965,42 @@ void Board::hardDrop(){
 	}
 	
 	makeStill();
+}
+
+void Board::hold(){
+	if(!isHeld){
+		bool goDispense = false;
+		
+		if(holdPiece.kind == NONE){
+			goDispense = true;	
+			holdPiece = current;
+		}else{	
+			holdPiece.row = height/2 - 2;
+			holdPiece.col = width/2;
+			
+			Tetromino temp = current;
+			
+			placeTetromino(holdPiece);
+			
+			holdPiece = temp;
+		}
+		
+		
+		// Remove moving blocks	
+		for(int row = visibleHeight; row < height; row++){
+			for(int col = 0; col < width; col++){
+				if(playfield[row][col] == moving){
+					playfield[row][col] = empty;			
+				}		
+			}
+		}
+		
+		if(goDispense){
+			dispense();
+		}
+		
+		isHeld = true;
+	}
 }
 
 void Board::terminalDisplay(bool clear){
@@ -970,8 +1039,8 @@ void Board::terminalDisplay(bool clear){
 
 
 void Board::display(){
-	int x = 100;
-	int y = 10;
+	int x = 90;
+	int y = 40;
 	int boxWidth = 20;
 	
 	// Create the border
@@ -985,18 +1054,59 @@ void Board::display(){
 			switch(playfield[row+visibleHeight][col]){
 				case empty:
 					color.clear();
-					makeSquare(x+(col-1)*boxWidth, y+row*boxWidth, x+col*boxWidth, y+(row+1)*boxWidth,boxWidth);
+					makeSquare(x+(col-1)*boxWidth, y+row*boxWidth, boxWidth, boxWidth);
 					break;
 				case still:
 				case moving:
 					color = fieldColors[row+visibleHeight][col];
-					makeSquare(x+(col-1)*boxWidth, y+row*boxWidth, x+col*boxWidth, y+(row+1)*boxWidth, boxWidth,color);				
+					makeSquare(x+(col-1)*boxWidth, y+row*boxWidth, boxWidth, boxWidth,color);				
 					break;
 			}
 		}
 	}
 	
 	// Hold Box
+	int holdMargin = 15;
+	int holdBox = boxWidth*2;
+	
+	int holdx = x-holdMargin-holdBox;
+	int holdy = y + 20;
+	
+	gfx_text(holdx, holdy, "HOLD");
+	gfx_rectangle(holdx, holdy+5, holdBox, holdBox);
+	
+	if(holdPiece.kind != NONE){
+		miniTetromino(holdx+holdBox/2, holdy+5+holdBox/2, holdBox, holdPiece.kind);
+	}
+	
+	// Upcoming 
+	int upcomingx = x + width*boxWidth;
+	int upcomingy = holdy;
+	
+	gfx_text(upcomingx, upcomingy, "UPCOMING");
+	
+	for(int i = 0; i <= upcomingSize; i++){
+		PieceStyle nextPiece = upcoming[upcoming.size()-1-i];
+		
+		gfx_rectangle(upcomingx, upcomingy+i*(holdBox+10)+10, holdBox, holdBox);
+		miniTetromino(upcomingx+holdBox/2, upcomingy+i*(holdBox+10)+10+holdBox/2, holdBox, nextPiece);
+	}
+	
+	// Level
+	int levely = holdy + holdBox + 50;
+	
+	ostringstream levelText;
+	levelText << "Level: " << level;
+	
+	gfx_text(holdx, levely, levelText.str().c_str());
+	
+	// Lines Cleared
+	ostringstream linesText;
+	linesText << "Lines: " << linesCleared;
+
+	gfx_text(holdx, levely+20, linesText.str().c_str());
+
+	
 
 }
 
@@ -1005,28 +1115,15 @@ void Board::display(){
 
 // Make sure x and y is less than line width
 void makeBorder(int x, int y, int width, int height, int boxWidth){
-	int x2 = x+width*boxWidth;
-	int y2 = y+height*boxWidth;
-	
-	makeSquare(x,y,x2,y2,boxWidth);
+	makeSquare(x,y,width*boxWidth,height*boxWidth);
 }
 
-void makeSquare(int x, int y, int x2, int y2, int boxWidth, Color fillColor){
-	// Left right up down
-	gfx_line(x,y,x,y2);
-	gfx_line(x2,y,x2,y2);
-	gfx_line(x,y,x2,y);
-	gfx_line(x,y2,x2,y2);
-
+void makeSquare(int x, int y, int width, int height, Color fillColor){
+	gfx_rectangle(x,y,width,height);
 	
 	if(fillColor != Color()){
 		gfx_color(fillColor.r, fillColor.g, fillColor.b);
-	
-		//Color Inside
-		for(int i = 1; i <= x2-x; i++){
-			gfx_line(x+i,y+1,x+i,y2-1);
-		}
-	
+		gfx_fill_rectangle(x+1,y+1,width-2,height-2);
 		fillColor.clear();
 		gfx_color(fillColor.r, fillColor.g, fillColor.b);
 	}
@@ -1035,27 +1132,42 @@ void makeSquare(int x, int y, int x2, int y2, int boxWidth, Color fillColor){
 // Mini versions of tetrominos for hold and upcoming
 // x and y are the center
 void miniTetromino(int x, int y, int boxWidth, PieceStyle piece){
+	Color color = Color();
+	color.init(piece);
+	
+	gfx_color(color.r,color.g,color.b);
+	
 	switch(piece){
 		case I:
-
+			gfx_fill_rectangle(x,y-boxWidth*0.35, 4, boxWidth*0.7);
 			break;
 		case O:
-
+			gfx_fill_rectangle(x-boxWidth*0.2,y-boxWidth*0.2, boxWidth*0.5, boxWidth*0.5);
 			break;
 		case T: 
-
+			gfx_fill_rectangle(x,y-boxWidth*0.2, 4, boxWidth*0.3);
+			gfx_fill_rectangle(x-boxWidth*0.2,y,boxWidth*0.5, 4);
 			break;
 		case S:
-
+			gfx_fill_rectangle(x-boxWidth*0.1,y+4,boxWidth*0.25, 4);
+			gfx_fill_rectangle(x,y,boxWidth*0.25, 4);
 			break;
 		case Z:
-
+			gfx_fill_rectangle(x-boxWidth*0.1,y,boxWidth*0.25, 4);
+			gfx_fill_rectangle(x,y+4,boxWidth*0.25, 4);
 			break;
 		case J:
-
+			gfx_fill_rectangle(x,y-boxWidth*0.3, 4, boxWidth*0.3);
+			gfx_fill_rectangle(x-boxWidth*0.2,y,boxWidth*0.3, 4);
 			break;
 		case L:
-
+			gfx_fill_rectangle(x-boxWidth*0.2,y-boxWidth*0.3, 4, boxWidth*0.3);
+			gfx_fill_rectangle(x-boxWidth*0.2,y,boxWidth*0.3, 4);
+			break;
+		default:
 			break;
 	}
+	
+	color.clear();
+	gfx_color(color.r,color.g,color.b);
 }
