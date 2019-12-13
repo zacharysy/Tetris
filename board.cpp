@@ -971,6 +971,15 @@ void Board::hold(){
 	if(!isHeld){
 		bool goDispense = false;
 		
+		// Remove moving blocks	
+		for(int row = visibleHeight-20; row < height; row++){
+			for(int col = 0; col < width; col++){
+				if(playfield[row][col] == moving){
+					playfield[row][col] = empty;			
+				}		
+			}
+		}
+		
 		if(holdPiece.kind == NONE){
 			goDispense = true;	
 			holdPiece = current;
@@ -983,16 +992,6 @@ void Board::hold(){
 			placeTetromino(holdPiece);
 			
 			holdPiece = temp;
-		}
-		
-		
-		// Remove moving blocks	
-		for(int row = visibleHeight; row < height; row++){
-			for(int col = 0; col < width; col++){
-				if(playfield[row][col] == moving){
-					playfield[row][col] = empty;			
-				}		
-			}
 		}
 		
 		if(goDispense){
